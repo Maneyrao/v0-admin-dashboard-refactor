@@ -9,12 +9,19 @@ export function getToken(): string | null {
 
 export function setToken(token: string, tokenType?: string, expiresIn?: number): void {
   if (typeof window === 'undefined') return
-  localStorage.setItem(ACCESS_TOKEN_KEY, token)
-  if (tokenType) {
-    localStorage.setItem(TOKEN_TYPE_KEY, tokenType)
-  }
-  if (expiresIn !== undefined) {
-    localStorage.setItem(EXPIRES_IN_KEY, String(expiresIn))
+  
+  try {
+    localStorage.setItem(ACCESS_TOKEN_KEY, token)
+    if (tokenType) {
+      localStorage.setItem(TOKEN_TYPE_KEY, tokenType)
+    }
+    if (expiresIn !== undefined) {
+      localStorage.setItem(EXPIRES_IN_KEY, String(expiresIn))
+    }
+    console.log('Token stored successfully')
+  } catch (error) {
+    console.error('Failed to store token:', error)
+    throw new Error('No se pudo guardar la sesión')
   }
 }
 

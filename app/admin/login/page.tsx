@@ -37,8 +37,13 @@ export default function AdminLoginPage() {
 
     try {
       await login(email, password)
-      router.replace(nextUrl)
+      
+      // Small delay to ensure token is stored
+      setTimeout(() => {
+        router.replace(nextUrl)
+      }, 100)
     } catch (err) {
+      console.error('Login error:', err)
       setError(err instanceof Error ? err.message : 'Error al iniciar sesion')
     } finally {
       setIsLoading(false)

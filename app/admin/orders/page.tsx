@@ -14,14 +14,35 @@ export default function OrdersPage() {
   const [orderStatus, setOrderStatus] = useState<OrderStatus | 'all'>('all')
 
   // Fetch orders from API
-  const { data: orders, isLoading, mutate } = useSWR<OrderWithCustomer[]>(
+  const { data: orders, isLoading, mutate, error } = useSWR<OrderWithCustomer[]>(
     '/admin/orders',
-    () => adminOrdersApi.list()
+    () => adminOrdersApi.list(),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      onError: (err) => {
+        console.error('Failed to fetch orders:', err)
+      }
+    }
   )
 
   const handleOrderUpdate = useCallback(() => {
     mutate()
   }, [mutate])
+
+  if (error) {
+    return (
+      <>
+        <AdminTopbar title="Pedidos" />
+        <main className="p-4 lg:p-6">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center">
+            <h3 className="text-lg font-semibold text-destructive mb-2">Error al cargar pedidos</h3>
+            <p className="text-muted-foreground">No se pudieron cargar los pedidos. Intenta recargar la página.</p>
+          </div>
+        </main>
+      </>
+    )
+  }
 
   const filteredOrders = useMemo(() => {
     if (!orders) return []

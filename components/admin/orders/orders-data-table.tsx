@@ -26,7 +26,7 @@ import { OrderSheet } from './order-sheet'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { toast } from 'sonner'
 import { adminOrdersApi } from '@/lib/api/adminOrders'
-import { ApiError } from '@/lib/api/apiFetch'
+import { ApiError } from '@/lib/api/apiClient'
 
 interface OrdersDataTableProps {
   orders: OrderWithCustomer[]

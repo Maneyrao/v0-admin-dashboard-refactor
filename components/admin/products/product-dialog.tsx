@@ -19,7 +19,7 @@ import type { ProductWithImages, ProductImage } from '@/lib/types'
 import { toast } from 'sonner'
 import { adminProductsApi } from '@/lib/api/adminProducts'
 import { adminMediaApi } from '@/lib/api/adminMedia'
-import { ApiError } from '@/lib/api/apiFetch'
+import { ApiError } from '@/lib/api/apiClient'
 
 const MAX_FEATURED_PRODUCTS = 10
 

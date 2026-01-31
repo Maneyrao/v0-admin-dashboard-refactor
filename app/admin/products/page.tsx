@@ -19,14 +19,35 @@ export default function ProductsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   // Fetch products from API
-  const { data: products, isLoading, mutate } = useSWR<ProductWithImages[]>(
+  const { data: products, isLoading, mutate, error } = useSWR<ProductWithImages[]>(
     '/admin/products',
-    () => adminProductsApi.list()
+    () => adminProductsApi.list(),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      onError: (err) => {
+        console.error('Failed to fetch products:', err)
+      }
+    }
   )
 
   const handleProductUpdate = useCallback(() => {
     mutate()
   }, [mutate])
+
+  if (error) {
+    return (
+      <>
+        <AdminTopbar title="Productos" />
+        <main className="p-4 lg:p-6">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center">
+            <h3 className="text-lg font-semibold text-destructive mb-2">Error al cargar productos</h3>
+            <p className="text-muted-foreground">No se pudieron cargar los productos. Intenta recargar la página.</p>
+          </div>
+        </main>
+      </>
+    )
+  }
 
   const featuredCount = useMemo(() => {
     return products?.filter((p) => p.is_featured).length ?? 0

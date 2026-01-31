@@ -39,6 +39,7 @@ export interface OrderItem {
   product_name: string // snapshot
   quantity: number
   unit_price: number
+  subtotal: number // Added for backend compatibility
 }
 
 export interface Order {

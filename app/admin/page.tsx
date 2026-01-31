@@ -11,10 +11,31 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function AdminDashboardPage() {
   // Fetch orders from API
-  const { data: orders, isLoading } = useSWR<OrderWithCustomer[]>(
+  const { data: orders, isLoading, error } = useSWR<OrderWithCustomer[]>(
     '/admin/orders',
-    () => adminOrdersApi.list()
+    () => adminOrdersApi.list(),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      onError: (err) => {
+        console.error('Failed to fetch dashboard data:', err)
+      }
+    }
   )
+
+  if (error) {
+    return (
+      <>
+        <AdminTopbar title="Dashboard" />
+        <main className="p-4 lg:p-6">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center">
+            <h3 className="text-lg font-semibold text-destructive mb-2">Error al cargar dashboard</h3>
+            <p className="text-muted-foreground">No se pudieron cargar los datos. Intenta recargar la página.</p>
+          </div>
+        </main>
+      </>
+    )
+  }
 
   // Calculate stats from orders
   const stats = useMemo(() => {

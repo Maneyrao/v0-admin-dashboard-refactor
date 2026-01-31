@@ -1,5 +1,5 @@
 import { setToken, clearToken } from './storage'
-import { AUTH_LOGIN } from './endpoints'
+import { apiPost } from './apiClient'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || ''
 
@@ -10,35 +10,33 @@ interface LoginResponse {
 }
 
 export async function login(email: string, password: string): Promise<void> {
-  const url = `${API_BASE_URL}${AUTH_LOGIN}`
+  if (!API_BASE_URL) {
+    throw new Error('API no configurada. Contacta al administrador.')
+  }
+  
+  console.log('Login attempt to API:', API_BASE_URL)
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    const data: LoginResponse = await apiPost<LoginResponse>('/auth/login', {
       email: email.trim().toLowerCase(),
       password,
-    }),
-  })
-
-  if (response.status === 401) {
-    throw new Error('Credenciales invalidas')
+    }, { auth: false })
+    
+    console.log('Login successful, token received')
+    setToken(data.access_token, data.token_type, data.expires_in)
+  } catch (error) {
+    console.error('Login error:', error)
+    if (error instanceof Error) {
+      if (error.message.includes('401') || error.message.includes('Credenciales')) {
+        throw new Error('Credenciales inválidas')
+      }
+      if (error.message.includes('422')) {
+        throw new Error('Faltan credenciales')
+      }
+      throw error
+    }
+    throw new Error('Error al iniciar sesión')
   }
-
-  if (response.status === 422) {
-    throw new Error('Faltan credenciales')
-  }
-
-  if (!response.ok) {
-    console.error('[v0] Login error:', response.status, response.statusText)
-    throw new Error('Error al iniciar sesion')
-  }
-
-  const data: LoginResponse = await response.json()
-  setToken(data.access_token, data.token_type, data.expires_in)
 }
 
 export function logout(): void {

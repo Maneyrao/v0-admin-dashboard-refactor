@@ -25,7 +25,7 @@ import { ProductDialog } from './product-dialog'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { toast } from 'sonner'
 import { adminProductsApi } from '@/lib/api/adminProducts'
-import { ApiError } from '@/lib/api/apiFetch'
+import { ApiError } from '@/lib/api/apiClient'
 
 const MAX_FEATURED_PRODUCTS = 10
 

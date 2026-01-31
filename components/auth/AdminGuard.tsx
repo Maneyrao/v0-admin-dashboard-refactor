@@ -17,17 +17,29 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const pathname = usePathname()
 
   useEffect(() => {
-    const token = getToken()
+    const checkAuth = () => {
+      try {
+        const token = getToken()
+        
+        if (!token) {
+          // No token - redirect to login
+          const nextUrl = encodeURIComponent(pathname)
+          router.replace(`${ROUTE_ADMIN_LOGIN}?next=${nextUrl}`)
+          return
+        }
 
-    if (!token) {
-      const nextUrl = encodeURIComponent(pathname)
-      router.replace(`${ROUTE_ADMIN_LOGIN}?next=${nextUrl}`)
-      return
+        // Token exists - allow render
+        setIsAuthorized(true)
+        setIsChecking(false)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        // On error, redirect to login
+        const nextUrl = encodeURIComponent(pathname)
+        router.replace(`${ROUTE_ADMIN_LOGIN}?next=${nextUrl}`)
+      }
     }
 
-    // Token exists - allow render
-    setIsAuthorized(true)
-    setIsChecking(false)
+    checkAuth()
   }, [router, pathname])
 
   // Show skeleton while checking auth

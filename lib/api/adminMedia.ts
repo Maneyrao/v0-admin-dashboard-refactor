@@ -1,4 +1,4 @@
-import { apiFetch } from './apiFetch'
+import { api, apiGet, apiPost, apiPatch, apiDelete } from '../apiClient'
 import type { ProductImage } from '@/lib/types'
 
 export interface LinkMediaPayload {
@@ -15,17 +15,14 @@ export const adminMediaApi = {
    * GET /admin/products/{productId}/media
    */
   async list(productId: string): Promise<ProductImage[]> {
-    return apiFetch<ProductImage[]>(`/admin/products/${productId}/media`)
+    return apiGet<ProductImage[]>(`/admin/products/${productId}/media`)
   },
 
   /**
    * POST /admin/products/{productId}/media/link
    */
   async link(productId: string, payload: LinkMediaPayload): Promise<ProductImage> {
-    return apiFetch<ProductImage>(`/admin/products/${productId}/media/link`, {
-      method: 'POST',
-      body: payload,
-    })
+    return apiPost<ProductImage>(`/admin/products/${productId}/media/link`, payload)
   },
 
   /**
@@ -35,7 +32,7 @@ export const adminMediaApi = {
     const formData = new FormData()
     formData.append('file', file)
 
-    return apiFetch<ProductImage>(`/admin/products/${productId}/media/upload`, {
+    return api<ProductImage>(`/admin/products/${productId}/media/upload`, {
       method: 'POST',
       body: formData,
     })
@@ -45,27 +42,20 @@ export const adminMediaApi = {
    * PATCH /admin/products/{productId}/media/{mediaId}
    */
   async update(productId: string, mediaId: string, data: UpdateMediaData): Promise<ProductImage> {
-    return apiFetch<ProductImage>(`/admin/products/${productId}/media/${mediaId}`, {
-      method: 'PATCH',
-      body: data,
-    })
+    return apiPatch<ProductImage>(`/admin/products/${productId}/media/${mediaId}`, data)
   },
 
   /**
    * PATCH /admin/products/{productId}/media/{mediaId}/primary
    */
   async setPrimary(productId: string, mediaId: string): Promise<void> {
-    await apiFetch<void>(`/admin/products/${productId}/media/${mediaId}/primary`, {
-      method: 'PATCH',
-    })
+    await apiPatch<void>(`/admin/products/${productId}/media/${mediaId}/primary`)
   },
 
   /**
    * DELETE /admin/products/{productId}/media/{mediaId}
    */
   async remove(productId: string, mediaId: string): Promise<void> {
-    await apiFetch<void>(`/admin/products/${productId}/media/${mediaId}`, {
-      method: 'DELETE',
-    })
+    await apiDelete<void>(`/admin/products/${productId}/media/${mediaId}`)
   },
 }

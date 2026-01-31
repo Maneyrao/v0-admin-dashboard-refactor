@@ -1,13 +1,12 @@
-import { apiFetch } from './apiFetch'
+import { api, apiGet, apiPost, apiPatch, apiDelete } from '../apiClient'
 import type { Product, ProductWithImages } from '@/lib/types'
 
 export interface CreateProductData {
   name: string
-  description: string
+  description?: string
   price: number
   stock: number
-  is_published: boolean
-  is_featured: boolean
+  status: 'active' | 'paused' // Backend uses 'status' instead of 'is_published'
 }
 
 export interface UpdateProductData {
@@ -15,8 +14,7 @@ export interface UpdateProductData {
   description?: string
   price?: number
   stock?: number
-  is_published?: boolean
-  is_featured?: boolean
+  status?: 'active' | 'paused'
 }
 
 export const adminProductsApi = {
@@ -24,45 +22,34 @@ export const adminProductsApi = {
    * GET /admin/products
    */
   async list(): Promise<ProductWithImages[]> {
-    return apiFetch<ProductWithImages[]>('/admin/products')
+    return apiGet<ProductWithImages[]>('/admin/products')
   },
 
   /**
    * POST /admin/products
    */
   async create(data: CreateProductData): Promise<Product> {
-    return apiFetch<Product>('/admin/products', {
-      method: 'POST',
-      body: data,
-    })
+    return apiPost<Product>('/admin/products', data)
   },
 
   /**
    * PATCH /admin/products/{productId}
    */
   async update(productId: string, data: UpdateProductData): Promise<Product> {
-    return apiFetch<Product>(`/admin/products/${productId}`, {
-      method: 'PATCH',
-      body: data,
-    })
+    return apiPatch<Product>(`/admin/products/${productId}`, data)
   },
 
   /**
    * DELETE /admin/products/{productId}
    */
   async remove(productId: string): Promise<void> {
-    await apiFetch<void>(`/admin/products/${productId}`, {
-      method: 'DELETE',
-    })
+    await apiDelete<void>(`/admin/products/${productId}`)
   },
 
   /**
    * PATCH /admin/products/{productId}/featured
    */
   async setFeatured(productId: string, featured: boolean): Promise<void> {
-    await apiFetch<void>(`/admin/products/${productId}/featured`, {
-      method: 'PATCH',
-      body: { featured },
-    })
+    await apiPatch<void>(`/admin/products/${productId}/featured`, { is_featured: featured })
   },
 }
