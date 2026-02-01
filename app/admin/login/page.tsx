@@ -32,19 +32,37 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🚀 Form submit - Iniciando login...')
+    
+    // Validación frontend
+    if (!email.trim() || !password) {
+      setError('El email y la contraseña son requeridos')
+      return
+    }
+
     setError('')
     setIsLoading(true)
 
     try {
+      console.log('⏳ Llamando a función login...')
       await login(email, password)
       
-      // Small delay to ensure token is stored
-      setTimeout(() => {
+      console.log('✅ Login exitoso, verificando token...')
+      
+      // Verificación inmediata del token
+      const token = localStorage.getItem('access_token')
+      console.log('🔍 Token después de login:', token ? 'EXISTS' : 'MISSING')
+      
+      if (token) {
+        console.log('🔄 Redirigiendo a:', nextUrl)
         router.replace(nextUrl)
-      }, 100)
+      } else {
+        throw new Error('Token no guardado correctamente')
+      }
+      
     } catch (err) {
-      console.error('Login error:', err)
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesion')
+      console.error('❌ Error en handleSubmit:', err)
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión')
     } finally {
       setIsLoading(false)
     }
@@ -114,8 +132,23 @@ export default function AdminLoginPage() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
+                <div className="flex items-center gap-2">
+                  <span>⚠️</span>
+                  <div>
+                    <div className="font-medium">{error}</div>
+                    {error.includes('NEXT_PUBLIC_API_BASE_URL') && (
+                      <div className="text-xs mt-1 opacity-75">
+                        Verifica las variables de entorno en Vercel Settings → Environment Variables
+                      </div>
+                    )}
+                    {error.includes('CORS') && (
+                      <div className="text-xs mt-1 opacity-75">
+                        Verifica CORS_ORIGINS en Railway
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
