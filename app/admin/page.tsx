@@ -1,42 +1,24 @@
 'use client'
 
 import { useMemo } from 'react'
-import useSWR from 'swr'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { KPICards } from '@/components/admin/dashboard/kpi-cards'
 import { RecentOrdersTable } from '@/components/admin/dashboard/recent-orders-table'
-import { adminOrdersApi } from '@/lib/api/adminOrders'
+import { useOrders } from '@/lib/supabase-services'
 import type { OrderWithCustomer } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isTokenAvailable } from '@/lib/storage'
+
+// Mock token helper
+const isTokenAvailable = () => {
+  if (typeof window === 'undefined') return false
+  return !!localStorage.getItem('access_token')
+}
 
 export default function AdminDashboardPage() {
-  // Only fetch orders if token is available
-  const { data: orders, isLoading, error } = useSWR<OrderWithCustomer[]>(
-    isTokenAvailable() ? '/admin/orders' : null,
-    () => adminOrdersApi.list(),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      onError: (err) => {
-        console.error('Failed to fetch dashboard data:', err)
-      }
-    }
-  )
+  // Fetch orders from API
+  const { data: orders, isLoading, error } = useOrders()
 
-  if (error) {
-    return (
-      <>
-        <AdminTopbar title="Dashboard" />
-        <main className="p-4 lg:p-6">
-          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center">
-            <h3 className="text-lg font-semibold text-destructive mb-2">Error al cargar dashboard</h3>
-            <p className="text-muted-foreground">No se pudieron cargar los datos. Intenta recargar la página.</p>
-          </div>
-        </main>
-      </>
-    )
-  }
+
 
   // Calculate stats from orders
   const stats = useMemo(() => {
