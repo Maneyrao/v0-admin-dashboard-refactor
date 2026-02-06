@@ -56,7 +56,7 @@ export default function ProductsPage() {
     return products.filter(
       (product) =>
         product.name.toLowerCase().includes(searchLower) ||
-        product.description.toLowerCase().includes(searchLower)
+        (product.description && product.description.toLowerCase().includes(searchLower))
     )
   }, [products, search])
 
