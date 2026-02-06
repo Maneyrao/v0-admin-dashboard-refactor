@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table'
 import type { ProductWithImages } from '@/lib/types'
 import { formatCurrency } from '@/lib/format'
-import { StockAdjustmentDialog } from './stock-adjustment-dialog'
+
 
 interface InventoryDataTableProps {
   products: ProductWithImages[]
@@ -153,13 +153,7 @@ export function InventoryDataTable({ products, onProductUpdate }: InventoryDataT
         </Table>
       </div>
 
-      {/* Stock Adjustment Dialog */}
-      <StockAdjustmentDialog
-        product={adjustingProduct}
-        open={!!adjustingProduct}
-        onOpenChange={(open) => !open && setAdjustingProduct(null)}
-        onProductUpdate={onProductUpdate}
-      />
+
     </>
   )
 }

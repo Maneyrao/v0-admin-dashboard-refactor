@@ -44,18 +44,20 @@ type UpdateProductData = {
 const transformProduct = (product: SupabaseProduct, media: SupabaseProductMedia[] = []): ProductWithImages => ({
   id: product.id,
   name: product.name,
-  description: product.description || '',
+  description: product.description,
   price: product.price,
   stock: product.stock,
   is_published: product.status === 'active',
-  is_featured: false, // TODO: Implement featured logic
+  is_featured: false,
   created_at: product.created_at,
-  updated_at: product.created_at, // Supabase doesn't track updated_at
+  updated_at: null,
   images: media.map(m => ({
     id: m.id,
     product_id: m.product_id,
     image_url: m.url,
     is_primary: m.is_primary,
+    type: m.type,
+    order: m.order,
     created_at: m.created_at
   }))
 })

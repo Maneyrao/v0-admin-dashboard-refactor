@@ -226,7 +226,7 @@ export function ProductsDataTable({
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground line-clamp-1">
-                            {product.description}
+                            {product.description || ''}
                           </p>
                         </div>
                       </div>
