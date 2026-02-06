@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { login } from '@/lib/auth'
-import { getToken, isTokenAvailable } from '@/lib/storage'
+import { adminLogin, adminLogout } from '@/lib/supabase-auth'
+import { supabase } from '@/lib/supabase'
 import { ROUTE_ADMIN_DASHBOARD } from '@/lib/routes'
 
 export default function AdminLoginPage() {
@@ -24,10 +24,13 @@ export default function AdminLoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
-    const token = getToken()
-    if (token) {
-      router.replace(nextUrl)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.replace(nextUrl)
+      }
     }
+    checkSession()
   }, [router, nextUrl])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,24 +48,22 @@ export default function AdminLoginPage() {
 
     try {
       console.log('⏳ Llamando a función login...')
-      await login(email, password)
+      await adminLogin(email, password)
       
-      console.log('✅ Login exitoso, verificando token...')
+      console.log('✅ Login exitoso, verificando sesión...')
       
-      // Pequeño delay para asegurar localStorage sincronización
+      // Pequeño delay para asegurar sesión sincronización
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      // Verificación robusta del token
-      const token = getToken()
-      const isAvailable = isTokenAvailable()
-      console.log('🔍 Token después de login:', token ? 'EXISTS' : 'MISSING')
-      console.log('🔍 isTokenAvailable():', isAvailable)
+      // Verificación robusta de la sesión
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('🔍 Sesión después de login:', session ? 'EXISTS' : 'MISSING')
       
-      if (token && isAvailable) {
+      if (session) {
         console.log('🔄 Redirigiendo a:', nextUrl)
         router.replace(nextUrl)
       } else {
-        throw new Error('Token no guardado correctamente o no disponible')
+        throw new Error('Sesión no guardada correctamente')
       }
       
     } catch (err) {
@@ -142,16 +143,7 @@ export default function AdminLoginPage() {
                   <span>⚠️</span>
                   <div>
                     <div className="font-medium">{error}</div>
-                    {error.includes('NEXT_PUBLIC_API_BASE_URL') && (
-                      <div className="text-xs mt-1 opacity-75">
-                        Verifica las variables de entorno en Vercel Settings → Environment Variables
-                      </div>
-                    )}
-                    {error.includes('CORS') && (
-                      <div className="text-xs mt-1 opacity-75">
-                        Verifica CORS_ORIGINS en Railway
-                      </div>
-                    )}
+
                   </div>
                 </div>
               </div>

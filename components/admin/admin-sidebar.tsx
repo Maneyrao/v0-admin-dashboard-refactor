@@ -6,7 +6,7 @@ import { LayoutDashboard, ShoppingCart, Package, Boxes, Menu, X, LogOut } from '
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
-import { logout } from '@/lib/auth'
+import { adminLogout } from '@/lib/supabase-auth'
 import { 
   ROUTE_ADMIN_DASHBOARD, 
   ROUTE_ADMIN_ORDERS, 
@@ -34,9 +34,13 @@ export function AdminSidebar() {
     return pathname.startsWith(href)
   }
 
-  const handleLogout = () => {
-    logout()
-    router.replace(ROUTE_ADMIN_LOGIN)
+  const handleLogout = async () => {
+    try {
+      await adminLogout()
+      router.replace(ROUTE_ADMIN_LOGIN)
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   return (
