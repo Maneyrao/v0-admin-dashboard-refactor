@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import useSWR from 'swr'
 import { Plus, Search, Star } from 'lucide-react'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { Button } from '@/components/ui/button'
@@ -9,7 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ProductsDataTable } from '@/components/admin/products/products-data-table'
 import { ProductDialog } from '@/components/admin/products/product-dialog'
-import { adminProductsApi } from '@/lib/api/adminProducts'
+import { 
+  useProducts, 
+  useCreateProduct, 
+  useUpdateProduct, 
+  useDeleteProduct, 
+  useSetFeaturedProduct 
+} from '@/lib/supabase-services'
 import type { ProductWithImages } from '@/lib/types'
 
 const MAX_FEATURED_PRODUCTS = 10
@@ -19,21 +24,11 @@ export default function ProductsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   // Fetch products from API
-  const { data: products, isLoading, mutate, error } = useSWR<ProductWithImages[]>(
-    '/admin/products',
-    () => adminProductsApi.list(),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      onError: (err) => {
-        console.error('Failed to fetch products:', err)
-      }
-    }
-  )
+  const { data: products, isLoading, error, refetch } = useProducts()
 
   const handleProductUpdate = useCallback(() => {
-    mutate()
-  }, [mutate])
+    refetch()
+  }, [refetch])
 
   if (error) {
     return (
