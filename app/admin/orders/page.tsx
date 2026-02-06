@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import useSWR from 'swr'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { OrdersFilters } from '@/components/admin/orders/orders-filters'
 import { OrdersDataTable } from '@/components/admin/orders/orders-data-table'
-import { adminOrdersApi } from '@/lib/api/adminOrders'
+import { 
+  useOrders, 
+  useMarkOrderAsPaid, 
+  useMarkOrderAsShipped 
+} from '@/lib/supabase-services'
 import type { PaymentStatus, OrderStatus, OrderWithCustomer } from '@/lib/types'
 
 export default function OrdersPage() {
@@ -14,21 +17,11 @@ export default function OrdersPage() {
   const [orderStatus, setOrderStatus] = useState<OrderStatus | 'all'>('all')
 
   // Fetch orders from API
-  const { data: orders, isLoading, mutate, error } = useSWR<OrderWithCustomer[]>(
-    '/admin/orders',
-    () => adminOrdersApi.list(),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      onError: (err) => {
-        console.error('Failed to fetch orders:', err)
-      }
-    }
-  )
+  const { data: orders, isLoading, error, refetch } = useOrders()
 
   const handleOrderUpdate = useCallback(() => {
-    mutate()
-  }, [mutate])
+    refetch()
+  }, [refetch])
 
   if (error) {
     return (
