@@ -25,8 +25,7 @@ import { PaymentStatusBadge, OrderStatusBadge } from './status-badges'
 import { OrderSheet } from './order-sheet'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { toast } from 'sonner'
-import { adminOrdersApi } from '@/lib/api/adminOrders'
-import { ApiError } from '@/lib/apiClient'
+import { adminOrdersApi } from '@/lib/mock-services'
 
 interface OrdersDataTableProps {
   orders: OrderWithCustomer[]
@@ -64,7 +63,7 @@ export function OrdersDataTable({ orders, onOrderUpdate, isLoading = false }: Or
       toast.success(`Pedido ${confirmAction.order.order_number} marcado como pagado`)
       onOrderUpdate?.()
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof Error) {
         toast.error('Error al marcar como pagado')
       } else {
         toast.error('Error de conexión')
@@ -84,7 +83,7 @@ export function OrdersDataTable({ orders, onOrderUpdate, isLoading = false }: Or
       toast.success(`Pedido ${confirmAction.order.order_number} marcado como enviado`)
       onOrderUpdate?.()
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof Error) {
         toast.error('Error al marcar como enviado')
       } else {
         toast.error('Error de conexión')
