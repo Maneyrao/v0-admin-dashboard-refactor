@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { adminLogin, adminLogout } from '@/lib/supabase-auth'
+import { adminLogin, getAdminSession } from '@/lib/supabase-auth'
 import { supabase } from '@/lib/supabase'
 import { ROUTE_ADMIN_DASHBOARD } from '@/lib/routes'
 
@@ -22,10 +22,18 @@ export default function AdminLoginPage() {
   const searchParams = useSearchParams()
   const nextUrl = searchParams.get('next') || ROUTE_ADMIN_DASHBOARD
 
+  // Pre-fill email with admin email from environment
+  useEffect(() => {
+    if (!email) {
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'roma_descartables@hotmail.com'
+      setEmail(adminEmail)
+    }
+  }, [email])
+
   // Redirect if already logged in
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getAdminSession()
       if (session) {
         router.replace(nextUrl)
       }
@@ -48,7 +56,7 @@ export default function AdminLoginPage() {
 
     try {
       console.log('⏳ Llamando a función login...')
-      await adminLogin(email, password)
+      const result = await adminLogin(email, password)
       
       console.log('✅ Login exitoso, verificando sesión...')
       
@@ -56,7 +64,7 @@ export default function AdminLoginPage() {
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Verificación robusta de la sesión
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getAdminSession()
       console.log('🔍 Sesión después de login:', session ? 'EXISTS' : 'MISSING')
       
       if (session) {

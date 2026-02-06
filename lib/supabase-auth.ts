@@ -1,79 +1,58 @@
-import { supabase } from './supabase'
+// Client-side authentication functions (for use in components)
+// These make API calls to server-side handlers
 
-// Get admin credentials from environment variables
-// Asegúrate de configurar ADMIN_EMAIL y ADMIN_PASSWORD en tus variables de entorno
-function getAdminCredentials() {
-  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-    throw new Error('ADMIN_EMAIL y ADMIN_PASSWORD deben estar configurados en las variables de entorno')
+interface AuthSession {
+  user: {
+    id: string
+    email: string
+    role: string
   }
-  
-  return {
-    email: process.env.ADMIN_EMAIL,
-    password: process.env.ADMIN_PASSWORD
-  }
+  token: string
 }
 
+// Client-side login API call
 export async function adminLogin(email: string, password: string) {
-  const adminCreds = getAdminCredentials()
-  
-  // Validate admin credentials
-  if (email !== adminCreds.email || password !== adminCreds.password) {
-    throw new Error('Credenciales inválidas')
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(error || 'Error de autenticación')
   }
-  
-  try {
-    // Sign in with Supabase
-    const { data: { session }, error } = await supabase.auth.signInWithPassword({
-      email: adminCreds.email,
-      password: adminCreds.password
-    })
-    
-    if (error) {
-      console.error('Supabase auth error:', error)
-      throw new Error('Error de autenticación')
-    }
-    
-    if (!session) {
-      throw new Error('No se pudo iniciar sesión')
-    }
-    
-    return { success: true, session }
-  } catch (error) {
-    console.error('Login error:', error)
-    throw error instanceof Error ? error : new Error('Error al iniciar sesión')
-  }
+
+  return response.json()
 }
 
+// Client-side logout API call
 export async function adminLogout() {
-  try {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error('Logout error:', error)
-      throw new Error('Error al cerrar sesión')
-    }
-  } catch (error) {
-    console.error('Logout error:', error)
-    throw error instanceof Error ? error : new Error('Error al cerrar sesión')
+  const response = await fetch('/api/auth/logout', {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(error || 'Error al cerrar sesión')
   }
 }
 
-export async function getAdminSession() {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession()
-    
-    if (error || !session) {
-      return null
-    }
-    
-    // For single admin setup, if session exists, it's valid
-    return session
-  } catch (error) {
-    console.error('Get session error:', error)
+// Client-side session check
+export async function getAdminSession(): Promise<AuthSession | null> {
+  const response = await fetch('/api/auth/session')
+  
+  if (!response.ok) {
     return null
   }
+
+  const data = await response.json()
+  return data.session
 }
 
 export async function isAuthAdmin() {
   const session = await getAdminSession()
-  return !!session
+  return !!session && session.user.role === 'admin'
 }

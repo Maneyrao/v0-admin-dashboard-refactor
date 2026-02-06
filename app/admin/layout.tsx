@@ -4,6 +4,7 @@ import React from "react"
 import { usePathname } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminGuard } from '@/components/auth/AdminGuard'
+import { AuthProvider } from '@/components/auth/auth-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { ROUTE_ADMIN_LOGIN } from '@/lib/routes'
 
@@ -20,12 +21,14 @@ export default function AdminLayout({
   }
 
   return (
-    <AdminGuard>
-      <div className="min-h-screen bg-background">
-        <AdminSidebar />
-        <div className="lg:pl-64">{children}</div>
-        <Toaster />
-      </div>
-    </AdminGuard>
+    <AuthProvider>
+      <AdminGuard>
+        <div className="min-h-screen bg-background">
+          <AdminSidebar />
+          <div className="lg:pl-64">{children}</div>
+          <Toaster />
+        </div>
+      </AdminGuard>
+    </AuthProvider>
   )
 }

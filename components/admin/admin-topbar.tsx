@@ -11,12 +11,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { useAuth } from '@/components/auth/auth-provider'
 
 interface AdminTopbarProps {
   title?: string
 }
 
 export function AdminTopbar({ title }: AdminTopbarProps) {
+  const { logout } = useAuth()
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background px-4 lg:px-6">
       {/* Page title - offset for mobile menu button */}
@@ -51,7 +53,7 @@ export function AdminTopbar({ title }: AdminTopbarProps) {
             <DropdownMenuItem>Configuración</DropdownMenuItem>
             <DropdownMenuItem>Ayuda</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={logout}>
               Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>

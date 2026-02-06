@@ -1,22 +1,41 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { KPICards } from '@/components/admin/dashboard/kpi-cards'
 import { RecentOrdersTable } from '@/components/admin/dashboard/recent-orders-table'
 import { useOrders } from '@/lib/supabase-services'
+import { useAuth } from '@/components/auth/auth-provider'
 import type { OrderWithCustomer } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
-
-// Mock token helper
-const isTokenAvailable = () => {
-  if (typeof window === 'undefined') return false
-  return !!localStorage.getItem('access_token')
-}
+import { Button } from '@/components/ui/button'
 
 export default function AdminDashboardPage() {
+  const router = useRouter()
+  const { user, loading, isAuthenticated, logout } = useAuth()
+  
   // Fetch orders from API
   const { data: orders, isLoading, error } = useOrders()
+
+  // Redirect if not authenticated
+  if (!loading && !isAuthenticated) {
+    router.replace('/admin/login')
+    return null
+  }
+
+  if (loading) {
+    return (
+      <>
+        <AdminTopbar title="Dashboard" />
+        <main className="p-4 lg:p-6 space-y-6">
+          <div className="flex items-center justify-center h-64">
+            <Skeleton className="h-8 w-32" />
+          </div>
+        </main>
+      </>
+    )
+  }
 
 
 
