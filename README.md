@@ -144,8 +144,8 @@ Para información detallada sobre deploy, gestión de dependencias y solución d
 
 **Siempre actualiza el lockfile después de modificar `package.json`:**
 ```bash
-pnpm install
-git add pnpm-lock.yaml
+npm install
+git add package-lock.json
 git commit -m "fix: actualizar lockfile"
 ```
 

@@ -16,10 +16,7 @@ ERR_PNPM_OUTDATED_LOCKFILE Cannot install with "frozen-lockfile" because pnpm-lo
 ### 1. Actualizar Lockfile
 
 ```bash
-# Usar pnpm (recomendado para este proyecto)
-npx pnpm@latest install
-
-# O usar npm si pnpm no está disponible
+# Usar npm (gestor de paquetes oficial del proyecto)
 npm install
 ```
 
@@ -27,7 +24,7 @@ npm install
 
 ```bash
 git status
-git add pnpm-lock.yaml
+git add package-lock.json
 git commit -m "fix: actualizar lockfile para deploy"
 ```
 
@@ -37,7 +34,7 @@ git commit -m "fix: actualizar lockfile para deploy"
 
 **Flujo correcto:**
 1. Modificar `package.json` (agregar/eliminar dependencias)
-2. **Inmediatamente después**: Ejecutar `pnpm install`
+2. **Inmediatamente después**: Ejecutar `npm install`
 3. Verificar cambios en lockfile
 4. Commitear ambos archivos juntos
 
@@ -45,13 +42,13 @@ git commit -m "fix: actualizar lockfile para deploy"
 
 ```bash
 # Después de cualquier cambio en package.json
-pnpm install
+npm install
 
 # Verificar qué dependencias cambiaron
 git diff package.json
 
 # Verificar cambios en lockfile
-git diff pnpm-lock.yaml
+git diff package-lock.json
 ```
 
 ## 🔄 Gestión de Paquetes
@@ -61,16 +58,16 @@ git diff pnpm-lock.yaml
 ```
 📁 Raíz del proyecto
 ├── package.json           # Dependencias y scripts
-├── pnpm-lock.yaml        # Lockfile de pnpm (usado por Vercel)
-├── package-lock.json     # Lockfile de npm (backup/local)
+├── package-lock.json     # Lockfile de npm (usado por Vercel y desarrollo)
 └── node_modules/        # Dependencias instaladas
 ```
 
-### Gestores de Paquetes
+### Gestor de Paquetes
 
-- **Vercel**: Usa `pnpm` por defecto
-- **Desarrollo local**: Puede usar `npm` o `pnpm`
-- **Importante**: Mantener `pnpm-lock.yaml` actualizado
+- **Este proyecto usa**: npm
+- **Vercel**: Detecta automáticamente npm y usa `package-lock.json`
+- **Desarrollo local**: Usa npm para consistencia
+- **Importante**: Mantener `package-lock.json` actualizado
 
 ## 📋 Checklist Antes de Deploy
 
@@ -94,14 +91,14 @@ pnpm run build
 
 ```bash
 # Verificar dependencias desactualizadas
-pnpm outdated
+npm outdated
 
 # Verificar vulnerabilidades
-pnpm audit
+npm audit
 
 # Limpiar e instalar desde cero
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
+rm -rf node_modules package-lock.json
+npm install
 ```
 
 ## 🔧 Configuración de Vercel
@@ -125,8 +122,8 @@ NEXT_PUBLIC_ADMIN_EMAIL=
 
 Vercel usa automáticamente:
 ```bash
-pnpm install
-pnpm run build
+npm install
+npm run build
 ```
 
 ## 🚨 Errores Comunes y Soluciones
@@ -175,13 +172,13 @@ git status
 
 ```bash
 # Para actualizar dependencias
-pnpm update
+npm update
 
 # Para agregar nueva dependencia
-pnpm add nombre-del-paquete
+npm install nombre-del-paquete
 
 # Para agregar dev dependency
-pnpm add -D nombre-del-paquete
+npm install --save-dev nombre-del-paquete
 ```
 
 ## 🆘 Soporte
@@ -197,13 +194,13 @@ pnpm add -D nombre-del-paquete
 
 ```bash
 # Verificar instalación de dependencias
-pnpm list
+npm list
 
 # Verificar scripts disponibles
-pnpm run
+npm run
 
 # Verificar configuración
-pnpm config list
+npm config list
 ```
 
 ---
