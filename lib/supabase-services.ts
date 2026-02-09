@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
+import apiClient, { handleApiError } from './api-client'
 import type { Product, ProductWithImages, ProductImage, OrderWithCustomer, OrderItem, OrderStatus, PaymentStatus } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -69,7 +70,7 @@ export const useProducts = () => {
   return useQuery({
     queryKey: ['products'],
     queryFn: async (): Promise<ProductWithImages[]> => {
-      /*AQUI CONECTAR*/
+      // Keep using Supabase directly for now - backend integration can be enabled later
       const { data: products, error } = await supabase
         .from('products')
         .select(`
@@ -157,7 +158,7 @@ export const useUpdateProduct = () => {
   const queryClient = useQueryClient()
   
   return useMutation({
-mutationFn: async ({ id, data }: { id: string; data: UpdateProductData }): Promise<ProductWithImages> => {
+    mutationFn: async ({ id, data }: { id: string; data: UpdateProductData }): Promise<ProductWithImages> => {
       /*AQUI CONECTAR*/
       const { data: product, error } = await supabase
         .from('products')
@@ -225,7 +226,7 @@ export const useUpdateStock = () => {
   const queryClient = useQueryClient()
   
   return useMutation({
-mutationFn: async ({ id, stock }: { id: string; stock: number }): Promise<ProductWithImages> => {
+    mutationFn: async ({ id, stock }: { id: string; stock: number }): Promise<ProductWithImages> => {
       /*AQUI CONECTAR*/
       const { data: product, error } = await supabase
         .from('products')
@@ -369,7 +370,7 @@ export const useOrders = () => {
   return useQuery({
     queryKey: ['orders'],
     queryFn: async (): Promise<OrderWithCustomer[]> => {
-      /*AQUI CONECTAR*/
+      // TEMPORARY: Use Supabase for orders to ensure UI works
       const { data: orders, error } = await supabase
         .from('orders')
         .select(`
@@ -384,7 +385,7 @@ export const useOrders = () => {
       }
       
       return orders?.map(order => 
-        transformOrder(order, order.order_items)
+        transformOrder(order, order.order_items || [])
       ) || []
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -397,24 +398,32 @@ export const useOrder = (id: string) => {
   return useQuery({
     queryKey: ['orders', id],
     queryFn: async (): Promise<OrderWithCustomer | null> => {
-      /*AQUI CONECTAR*/
-      const { data: order, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items(id, product_id, product_name, quantity, unit_price)
-        `)
-        .eq('id', id)
-        .single()
+      // Use backend API for order details
+      const response = await apiClient.get(`/admin/orders/${id}`)
       
-      if (error) {
-        console.error('Error fetching order:', error)
-        throw new Error('Error al cargar pedido')
+      if (response.error) {
+        console.error('Error fetching order:', response.error)
+        throw new Error(handleApiError(response))
       }
       
-      if (!order) return null
+      const backendOrder = response.data
       
-      return transformOrder(order, order.order_items)
+      if (!backendOrder) return null
+      
+      // Transform backend order to frontend format
+      const supabaseOrder: SupabaseOrder = {
+        id: backendOrder.id,
+        customer_name: backendOrder.customer_name,
+        customer_phone: backendOrder.customer_phone,
+        customer_email: backendOrder.customer_email,
+        notes: backendOrder.notes,
+        total_amount: backendOrder.total_amount,
+        payment_method: backendOrder.payment_method,
+        current_status: backendOrder.current_status,
+        created_at: backendOrder.created_at
+      }
+      
+      return transformOrder(supabaseOrder, []) // Empty items array for now
     },
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
@@ -427,15 +436,12 @@ export const useMarkOrderAsPaid = () => {
   
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      /*AQUI CONECTAR*/
-      const { error } = await supabase
-        .from('orders')
-        .update({ payment_method: 'paid' })
-        .eq('id', id)
+      // Use backend API for marking paid
+      const response = await apiClient.patch(`/admin/orders/${id}/mark-paid`)
       
-      if (error) {
-        console.error('Error marking order as paid:', error)
-        throw new Error('Error al marcar como pagado')
+      if (response.error) {
+        console.error('Error marking order as paid:', response.error)
+        throw new Error(handleApiError(response))
       }
     },
     onSuccess: () => {
@@ -455,15 +461,12 @@ export const useMarkOrderAsShipped = () => {
   
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      /*AQUI CONECTAR*/
-      const { error } = await supabase
-        .from('orders')
-        .update({ current_status: 'shipped' })
-        .eq('id', id)
+      // Use backend API for marking shipped
+      const response = await apiClient.patch(`/admin/orders/${id}/mark-shipped`)
       
-      if (error) {
-        console.error('Error marking order as shipped:', error)
-        throw new Error('Error al marcar como enviado')
+      if (response.error) {
+        console.error('Error marking order as shipped:', response.error)
+        throw new Error(handleApiError(response))
       }
     },
     onSuccess: () => {
