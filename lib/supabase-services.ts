@@ -234,34 +234,19 @@ export const useDeleteProduct = () => {
   })
 }
 
-// Update Stock Mutation Hook
+// Update Stock Mutation Hook - Using Backend API
 export const useUpdateStock = () => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
-    mutationFn: async ({ id, stock }: { id: string; stock: number }): Promise<ProductWithImages> => {
-      /*AQUI CONECTAR*/
-      const { data: product, error } = await supabase
-        .from('products')
-        .update({ stock })
-        .eq('id', id)
-        .select()
-        .single()
-       
-      if (error) {
-        console.error('Error updating stock:', error)
-        throw new Error('Error al actualizar stock')
+    mutationFn: async ({ id, stock }: { id: string; stock: number }): Promise<void> => {
+      // Use backend API to update product stock
+      const response = await apiClient.patch(`/admin/products/${id}`, { stock })
+
+      if (response.error) {
+        console.error('Error updating stock:', response.error)
+        throw new Error(handleApiError(response))
       }
-       
-      // Get media for complete product
-      /*AQUI CONECTAR*/
-      const { data: media } = await supabase
-        .from('product_media')
-        .select('*')
-        .eq('product_id', id)
-        .order('order', { ascending: true })
-      
-      return transformProduct(product, media || [])
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
