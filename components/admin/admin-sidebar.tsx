@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Package, Boxes, Menu, X, LogOut } from 'lucide-react'
+import { Package, Boxes, Menu, X, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
@@ -15,7 +15,6 @@ import {
 } from '@/lib/routes'
 
 const navigation = [
-  { name: 'Dashboard', href: ROUTE_ADMIN_DASHBOARD, icon: LayoutDashboard },
   { name: 'Productos', href: ROUTE_ADMIN_PRODUCTS, icon: Package },
   { name: 'Inventario', href: ROUTE_ADMIN_INVENTORY, icon: Boxes },
 ]
