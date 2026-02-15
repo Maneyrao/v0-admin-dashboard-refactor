@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { adminLogin, getAdminSession } from '@/lib/supabase-auth'
 import { supabase } from '@/lib/supabase'
-import { ROUTE_ADMIN_DASHBOARD } from '@/lib/routes'
+import { ROUTE_ADMIN_PRODUCTS } from '@/lib/routes'
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
   const searchParams = useSearchParams()
-  const nextUrl = searchParams.get('next') || ROUTE_ADMIN_DASHBOARD
+  const nextUrl = searchParams.get('next') || ROUTE_ADMIN_PRODUCTS
 
   // Pre-fill email with admin email from environment
   useEffect(() => {
