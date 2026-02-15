@@ -43,6 +43,19 @@ type UpdateProductData = {
   status?: 'active' | 'paused'
 }
 
+// Helper function to get public URL from Supabase Storage
+const getPublicImageUrl = (url: string): string => {
+  // If URL already starts with http, it's already a full URL
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // Otherwise, generate public URL from Supabase Storage
+  const bucket = 'products'
+  const { data } = supabase.storage.from(bucket).getPublicUrl(url)
+  return data.publicUrl
+}
+
 // Transform Supabase product to frontend product
 const transformProduct = (product: SupabaseProduct, media: SupabaseProductMedia[] = []): ProductWithImages => ({
   id: product.id,
@@ -57,7 +70,7 @@ const transformProduct = (product: SupabaseProduct, media: SupabaseProductMedia[
   images: media.map(m => ({
     id: m.id,
     product_id: m.product_id,
-    image_url: m.url,
+    image_url: getPublicImageUrl(m.url),
     is_primary: m.is_primary,
     type: m.type,
     order: m.order,
