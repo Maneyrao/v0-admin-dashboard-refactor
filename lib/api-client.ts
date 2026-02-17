@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // HTTP Client for FastAPI Backend Integration
 // Handles authentication, error handling, and API communication
 
@@ -239,3 +240,51 @@ export const handleApiError = (error: ApiResponse<any>): string => {
   }
   return 'Error desconocido. Intente nuevamente.'
 }
+=======
+type ApiResult<T> = { data?: T; error?: string; status: number }
+
+function joinUrl(base: string, path: string) {
+  const b = base.replace(/\/+$/, '')
+  const p = path.startsWith('/') ? path : `/${path}`
+  return `${b}${p}`
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: any
+): Promise<ApiResult<T>> {
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+  const url = joinUrl(base, path)
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+
+    const status = res.status
+    const text = await res.text()
+    const json = text ? JSON.parse(text) : null
+
+    if (!res.ok) {
+      return { status, error: json?.detail || json?.error || `HTTP ${status}` }
+    }
+
+    return { status, data: json as T }
+  } catch (e: any) {
+    return { status: 0, error: e?.message || 'Network error' }
+  }
+}
+
+const apiClient = {
+  get: <T>(path: string) => request<T>('GET', path),
+  post: <T>(path: string, body?: any) => request<T>('POST', path, body),
+  put: <T>(path: string, body?: any) => request<T>('PUT', path, body),
+  patch: <T>(path: string, body?: any) => request<T>('PATCH', path, body),
+  delete: <T>(path: string) => request<T>('DELETE', path),
+}
+
+export default apiClient
+>>>>>>> 731b954 (Initial clean frontend)

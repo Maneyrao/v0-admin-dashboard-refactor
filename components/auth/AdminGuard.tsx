@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { getAdminSession } from '@/lib/supabase-auth'
+import { getToken } from '@/lib/storage'
 import { ROUTE_ADMIN_LOGIN } from '@/lib/routes'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -17,18 +17,18 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const pathname = usePathname()
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
-        const session = await getAdminSession()
+        const token = getToken()
         
-        if (!session) {
-          // No session - redirect to login
+        if (!token) {
+          // No token - redirect to login
           const nextUrl = encodeURIComponent(pathname)
           router.replace(`${ROUTE_ADMIN_LOGIN}?next=${nextUrl}`)
           return
         }
 
-        // Session exists - allow render
+        // Token exists - allow render
         setIsAuthorized(true)
         setIsChecking(false)
       } catch (error) {

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { AlertTriangle, Package, Plus, Minus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,8 +14,7 @@ import {
 } from '@/components/ui/table'
 import type { ProductWithImages } from '@/lib/types'
 import { formatCurrency } from '@/lib/format'
-import { useUpdateStock } from '@/lib/supabase-services'
-
+import { StockAdjustmentDialog } from './stock-adjustment-dialog'
 
 interface InventoryDataTableProps {
   products: ProductWithImages[]
@@ -22,7 +22,7 @@ interface InventoryDataTableProps {
 }
 
 export function InventoryDataTable({ products, onProductUpdate }: InventoryDataTableProps) {
-  const updateStock = useUpdateStock()
+  const [adjustingProduct, setAdjustingProduct] = useState<ProductWithImages | null>(null)
 
   const getStockStatus = (stock: number) => {
     if (stock === 0) {
@@ -128,14 +128,8 @@ export function InventoryDataTable({ products, onProductUpdate }: InventoryDataT
                           variant="outline"
                           size="icon"
                           className="h-8 w-8 bg-transparent"
-                          onClick={() => {
-                            updateStock.mutate(
-                              { id: product.id, stock: product.stock + 1 },
-                              { onSuccess: () => onProductUpdate?.() }
-                            )
-                          }}
-                          disabled={updateStock.isPending}
-                          title="Aumentar stock"
+                          onClick={() => setAdjustingProduct(product)}
+                          title="Ajustar stock"
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
@@ -143,13 +137,8 @@ export function InventoryDataTable({ products, onProductUpdate }: InventoryDataT
                           variant="outline"
                           size="icon"
                           className="h-8 w-8 bg-transparent"
-                          onClick={() => {
-                            updateStock.mutate(
-                              { id: product.id, stock: Math.max(0, product.stock - 1) },
-                              { onSuccess: () => onProductUpdate?.() }
-                            )
-                          }}
-                          disabled={product.stock === 0 || updateStock.isPending}
+                          onClick={() => setAdjustingProduct(product)}
+                          disabled={product.stock === 0}
                           title="Reducir stock"
                         >
                           <Minus className="h-4 w-4" />
@@ -163,6 +152,14 @@ export function InventoryDataTable({ products, onProductUpdate }: InventoryDataT
           </TableBody>
         </Table>
       </div>
+
+      {/* Stock Adjustment Dialog */}
+      <StockAdjustmentDialog
+        product={adjustingProduct}
+        open={!!adjustingProduct}
+        onOpenChange={(open) => !open && setAdjustingProduct(null)}
+        onProductUpdate={onProductUpdate}
+      />
     </>
   )
 }

@@ -25,7 +25,8 @@ import { PaymentStatusBadge, OrderStatusBadge } from './status-badges'
 import { OrderSheet } from './order-sheet'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { toast } from 'sonner'
-
+import { adminOrdersApi } from '@/lib/api/adminOrders'
+import { ApiError } from '@/lib/apiClient'
 
 interface OrdersDataTableProps {
   orders: OrderWithCustomer[]
@@ -58,9 +59,19 @@ export function OrdersDataTable({ orders, onOrderUpdate, isLoading = false }: Or
     
     setConfirmAction(prev => ({ ...prev, loading: true }))
     
-    toast.success(`Pedido ${confirmAction.order.order_number} marcado como pagado`)
-    onOrderUpdate?.()
-    setConfirmAction({ type: null, order: null, loading: false })
+    try {
+      await adminOrdersApi.markPaid(confirmAction.order.id)
+      toast.success(`Pedido ${confirmAction.order.order_number} marcado como pagado`)
+      onOrderUpdate?.()
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error('Error al marcar como pagado')
+      } else {
+        toast.error('Error de conexión')
+      }
+    } finally {
+      setConfirmAction({ type: null, order: null, loading: false })
+    }
   }
 
   const confirmMarkAsShipped = async () => {
@@ -68,9 +79,19 @@ export function OrdersDataTable({ orders, onOrderUpdate, isLoading = false }: Or
     
     setConfirmAction(prev => ({ ...prev, loading: true }))
     
-    toast.success(`Pedido ${confirmAction.order.order_number} marcado como enviado`)
-    onOrderUpdate?.()
-    setConfirmAction({ type: null, order: null, loading: false })
+    try {
+      await adminOrdersApi.markShipped(confirmAction.order.id)
+      toast.success(`Pedido ${confirmAction.order.order_number} marcado como enviado`)
+      onOrderUpdate?.()
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error('Error al marcar como enviado')
+      } else {
+        toast.error('Error de conexión')
+      }
+    } finally {
+      setConfirmAction({ type: null, order: null, loading: false })
+    }
   }
 
   if (isLoading) {

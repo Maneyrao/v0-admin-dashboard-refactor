@@ -17,12 +17,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { ProductWithImages, ProductImage } from '@/lib/types'
 import { toast } from 'sonner'
-import { 
-  useCreateProduct, 
-  useUpdateProduct, 
-  useSetFeaturedProduct 
-} from '@/lib/supabase-services'
-import { useUploadMedia } from '@/lib/media-services'
+import { adminProductsApi } from '@/lib/api/adminProducts'
+import { adminMediaApi } from '@/lib/api/adminMedia'
+import { ApiError } from '@/lib/apiClient'
 
 const MAX_FEATURED_PRODUCTS = 10
 
@@ -41,51 +38,93 @@ export function ProductDialog({
   featuredCount = 0,
   onProductUpdate 
 }: ProductDialogProps) {
+  const isEditing = !!product
+
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
   const [stock, setStock] = useState('')
   const [isPublished, setIsPublished] = useState(true)
   const [isFeatured, setIsFeatured] = useState(false)
+  const [images, setImages] = useState<ProductImage[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isFeaturedLoading, setIsFeaturedLoading] = useState(false)
+
+  // Track if featured was changed from original (for create flow)
   const [pendingFeatured, setPendingFeatured] = useState(false)
-  const [images, setImages] = useState<ProductImage[]>([])
-  const [isUploading, setIsUploading] = useState(false)
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const isEditing = !!product
 
-  // React Query hooks
-  const createProduct = useCreateProduct()
-  const updateProduct = useUpdateProduct()
-  const setFeaturedProduct = useSetFeaturedProduct()
-  const uploadMedia = useUploadMedia()
-
+  // Reset form when product changes
   useEffect(() => {
-    if (!product || !open) {
+    if (product) {
+      setName(product.name)
+      setDescription(product.description)
+      setPrice(product.price.toString())
+      setStock(product.stock.toString())
+      setIsPublished(product.is_published)
+      setIsFeatured(product.is_featured)
+      setImages(product.images || [])
+      setPendingFeatured(false)
+    } else {
       setName('')
       setDescription('')
       setPrice('')
       setStock('')
       setIsPublished(true)
       setIsFeatured(false)
-      setPendingFeatured(false)
       setImages([])
+      setPendingFeatured(false)
+    }
+  }, [product, open])
+
+  const handleFeaturedChange = async (checked: boolean) => {
+    // For new products, just store the preference
+    if (!isEditing) {
+      // Check limit before allowing
+      if (checked && featuredCount >= MAX_FEATURED_PRODUCTS) {
+        toast.error(`Límite alcanzado: máximo ${MAX_FEATURED_PRODUCTS} productos destacados`)
+        return
+      }
+      setIsFeatured(checked)
+      setPendingFeatured(checked)
       return
     }
 
-    setName(product.name)
-    setDescription(product.description || '')
-    setPrice(String(product.price))
-    setStock(String(product.stock))
-    setIsPublished(product.is_published)
-    setIsFeatured(product.is_featured)
-    setImages(product?.images || [])
-  }, [product, open])
+    // For existing products, call API immediately
+    if (checked && featuredCount >= MAX_FEATURED_PRODUCTS) {
+      toast.error(`Límite alcanzado: máximo ${MAX_FEATURED_PRODUCTS} productos destacados`)
+      return
+    }
+
+    setIsFeaturedLoading(true)
+    const previousValue = isFeatured
+    setIsFeatured(checked) // Optimistic update
+
+    try {
+      await adminProductsApi.setFeatured(product!.id, checked)
+      toast.success(checked ? 'Producto destacado' : 'Producto ya no está destacado')
+      onProductUpdate?.()
+    } catch (error) {
+      // Revert on error
+      setIsFeatured(previousValue)
+      
+      if (error instanceof ApiError) {
+        if (error.status === 409) {
+          toast.error(`Límite alcanzado: máximo ${MAX_FEATURED_PRODUCTS} productos destacados`)
+        } else {
+          toast.error('Error al actualizar el producto')
+        }
+      } else {
+        toast.error('Error de conexión')
+      }
+    } finally {
+      setIsFeaturedLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validation
     if (!name.trim()) {
       toast.error('El nombre es requerido')
       return
@@ -107,188 +146,210 @@ export function ProductDialog({
 
     try {
       if (isEditing) {
-        updateProduct.mutate({
-          id: product!.id,
-          data: {
-            name: name.trim(),
-            description: description.trim(),
-            price: priceNum,
-            stock: stockNum,
-            status: isPublished ? 'active' : 'paused',
-          }
-        })
-      } else {
-        createProduct.mutate({
+        // Update product
+        await adminProductsApi.update(product!.id, {
           name: name.trim(),
           description: description.trim(),
           price: priceNum,
           stock: stockNum,
-          status: isPublished ? 'active' : 'paused',
+          is_published: isPublished,
+        })
+        toast.success('Producto actualizado')
+      } else {
+        // Create product
+        const newProduct = await adminProductsApi.create({
+          name: name.trim(),
+          description: description.trim(),
+          price: priceNum,
+          stock: stockNum,
+          is_published: isPublished,
+          is_featured: false, // Always create as not featured first
         })
         
+        toast.success('Producto creado')
+        
+        // If featured was enabled, make the separate API call
         if (pendingFeatured) {
-          // This will be handled by the createProduct success callback
+          try {
+            await adminProductsApi.setFeatured(newProduct.id, true)
+            toast.success('Producto marcado como destacado')
+          } catch (error) {
+            if (error instanceof ApiError && error.status === 409) {
+              toast.error(`No se pudo destacar: límite de ${MAX_FEATURED_PRODUCTS} productos alcanzado`)
+            } else {
+              toast.error('Producto creado, pero no se pudo marcar como destacado')
+            }
+          }
         }
       }
 
       onProductUpdate?.()
       onOpenChange(false)
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ApiError) {
         toast.error('Error al guardar el producto')
       } else {
         toast.error('Error de conexión')
       }
     } finally {
       setIsSaving(false)
-      setIsFeaturedLoading(false)
     }
   }
 
-  const handleToggleFeatured = async () => {
-    if (!product) return
-
-    const newStatus = !product.is_featured
-    const productId = product.id
-    
-    if (newStatus && featuredCount >= MAX_FEATURED_PRODUCTS) {
-      toast.error(`Límite alcanzado: máximo ${MAX_FEATURED_PRODUCTS} productos destacados`)
-      return
-    }
-
-    setFeaturedProduct.mutate(
-      { id: productId, featured: newStatus },
-      {
-        onSuccess: () => {
-          onProductUpdate?.()
-        }
-      }
-    )
-  }
-
-  const handleAddImage = () => {
+  const handleAddImage = async () => {
     if (!isEditing || !product) {
       toast.error('Primero guarda el producto para agregar imágenes')
       return
     }
 
-    fileInputRef.current?.click()
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !product) return
-
-    // Validar tipo de archivo
-    if (!file.type.startsWith('image/')) {
-      toast.error('Solo se permiten archivos de imagen')
-      return
+    // For now, add placeholder - in real app, this would trigger file upload
+    const newImage: ProductImage = {
+      id: Math.random().toString(),
+      product_id: product.id,
+      image_url: '/placeholder.svg?height=200&width=200',
+      is_primary: images.length === 0,
+      created_at: new Date().toISOString(),
     }
-
-    // Validar tamaño (max 8MB)
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('El archivo no debe superar los 8MB')
-      return
-    }
-
-    setIsUploading(true)
-
-    try {
-      await uploadMedia.mutateAsync({
-        productId: product.id,
-        data: {
-          file,
-          type: 'image',
-          is_primary: images.length === 0,
-          order: images.length
-        }
-      })
-
-      toast.success('Imagen subida exitosamente')
-      onProductUpdate?.()
-    } catch (error) {
-      toast.error('Error al subir la imagen')
-      console.error('Upload error:', error)
-    } finally {
-      setIsUploading(false)
-      // Limpiar el input para permitir subir el mismo archivo nuevamente
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    }
+    setImages([...images, newImage])
+    toast.success('Imagen agregada')
   }
 
   const handleRemoveImage = async (imageId: string) => {
     if (!isEditing || !product) return
     
-    const updatedImages = images.filter((img) => img.id !== imageId)
-    if (updatedImages.length > 0 && !updatedImages.some((img) => img.is_primary)) {
-      updatedImages[0].is_primary = true
+    try {
+      await adminMediaApi.remove(product.id, imageId)
+      const updatedImages = images.filter((img) => img.id !== imageId)
+      if (updatedImages.length > 0 && !updatedImages.some((img) => img.is_primary)) {
+        updatedImages[0].is_primary = true
+      }
+      setImages(updatedImages)
+      toast.success('Imagen eliminada')
+    } catch {
+      toast.error('Error al eliminar imagen')
     }
-    setImages(updatedImages)
-    toast.success('Imagen eliminada')
   }
 
   const handleSetPrimary = async (imageId: string) => {
     if (!isEditing || !product) return
     
-    setImages(
-      images.map((img) => ({
-        ...img,
-        is_primary: img.id === imageId,
-      }))
-    )
-    toast.success('Imagen principal actualizada')
+    try {
+      await adminMediaApi.setPrimary(product.id, imageId)
+      setImages(
+        images.map((img) => ({
+          ...img,
+          is_primary: img.id === imageId,
+        }))
+      )
+      toast.success('Imagen principal actualizada')
+    } catch {
+      toast.error('Error al actualizar imagen principal')
+    }
   }
+
+  const canEnableFeatured = !isFeatured && featuredCount < MAX_FEATURED_PRODUCTS
+  const isAtFeaturedLimit = featuredCount >= MAX_FEATURED_PRODUCTS
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar producto' : 'Nuevo producto'}</DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="basic">Básico</TabsTrigger>
+
+        <form onSubmit={handleSubmit}>
+          <Tabs defaultValue="general" className="mt-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="inventory">Inventario</TabsTrigger>
               <TabsTrigger value="images">Imágenes</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="basic" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Nombre del producto"
-                    required
-                    disabled={isSaving}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="price">Precio</Label>
+
+            {/* General Tab */}
+            <TabsContent value="general" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nombre del producto"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descripción</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Descripción del producto"
+                  rows={4}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price">Precio</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    $
+                  </span>
                   <Input
                     id="price"
                     type="number"
-                    step="0.01"
                     min="0"
+                    step="0.01"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    placeholder="0.00"
-                    required
-                    disabled={isSaving}
+                    placeholder="0"
+                    className="pl-7"
                   />
                 </div>
               </div>
-              
+
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="published">Publicado</Label>
+                  <p className="text-sm text-muted-foreground">
+                    El producto será visible en la tienda
+                  </p>
+                </div>
+                <Switch
+                  id="published"
+                  checked={isPublished}
+                  onCheckedChange={setIsPublished}
+                />
+              </div>
+
+              {/* Featured Switch */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Star className={`h-4 w-4 ${isFeatured ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                    <Label htmlFor="featured">Producto destacado</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Aparece primero en la tienda (máx. {MAX_FEATURED_PRODUCTS})
+                  </p>
+                  {isAtFeaturedLimit && !isFeatured && (
+                    <p className="text-sm text-destructive">
+                      Límite alcanzado
+                    </p>
+                  )}
+                </div>
+                <Switch
+                  id="featured"
+                  checked={isFeatured}
+                  onCheckedChange={handleFeaturedChange}
+                  disabled={isFeaturedLoading || (!canEnableFeatured && !isFeatured)}
+                />
+              </div>
+            </TabsContent>
+
+            {/* Inventory Tab */}
+            <TabsContent value="inventory" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="stock">Stock</Label>
+                <Label htmlFor="stock">Stock disponible</Label>
                 <Input
                   id="stock"
                   type="number"
@@ -296,123 +357,104 @@ export function ProductDialog({
                   value={stock}
                   onChange={(e) => setStock(e.target.value)}
                   placeholder="0"
-                  required
-                  disabled={isSaving}
                 />
+                <p className="text-sm text-muted-foreground">
+                  El stock no puede ser menor a 0. Cuando llegue a 0, el producto quedará como sin stock.
+                </p>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Descripción del producto..."
-                  rows={3}
-                  disabled={isSaving}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="basic" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="published"
-                    checked={isPublished}
-                    onCheckedChange={setIsPublished}
-                    disabled={isSaving}
-                  />
-                  <Label htmlFor="published">Publicado</Label>
+
+              {parseInt(stock) === 0 && stock !== '' && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+                  <p className="text-sm font-medium text-destructive">
+                    Sin stock
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Este producto no tiene stock disponible.
+                  </p>
                 </div>
-                
-                {isEditing && (
-                  <div className="flex items-center space-x-2">
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="featured"
-                        checked={isFeatured}
-                        onCheckedChange={handleToggleFeatured}
-                        disabled={isFeaturedLoading || isSaving}
-                      />
-                      <Label htmlFor="featured">Destacado</Label>
-                    </div>
-                    {isFeaturedLoading && <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent" />}
-                  </div>
-                )}
-              </div>
+              )}
+
+              {parseInt(stock) > 0 && parseInt(stock) <= 5 && (
+                <div className="rounded-lg border border-orange-500/50 bg-orange-500/5 p-4">
+                  <p className="text-sm font-medium text-orange-600">
+                    Stock bajo
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Este producto tiene stock bajo. Considera reabastecerlo pronto.
+                  </p>
+                </div>
+              )}
             </TabsContent>
-            
-            <TabsContent value="images" className="space-y-4">
-              {isEditing && images.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  {images.map((img) => (
-                    <div key={img.id} className="relative border rounded-lg overflow-hidden">
-                      <img 
-                        src={img.image_url} 
-                        alt={`Imagen de ${product?.name}`}
-                        className="w-full h-32 object-cover"
-                      />
-                      {img.is_primary && (
-                        <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                          Principal
-                        </div>
-                      )}
+
+            {/* Images Tab */}
+            <TabsContent value="images" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {images.map((image) => (
+                  <div
+                    key={image.id}
+                    className="relative aspect-square rounded-lg border bg-muted overflow-hidden group"
+                  >
+                    <img
+                      src={image.image_url || "/placeholder.svg"}
+                      alt="Producto"
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleSetPrimary(image.id)}
+                        title="Marcar como principal"
+                      >
+                        <Star className={`h-4 w-4 ${image.is_primary ? 'fill-primary text-primary' : ''}`} />
+                      </Button>
                       <Button
                         type="button"
                         variant="destructive"
                         size="icon"
-                        className="absolute top-2 right-2"
-                        onClick={() => handleRemoveImage(img.id)}
-                        disabled={isSaving}
+                        className="h-8 w-8"
+                        onClick={() => handleRemoveImage(image.id)}
+                        title="Eliminar"
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  ))}
-                </div>
-              )}
-              
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
+                    {image.is_primary && (
+                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                        Principal
+                      </div>
+                    )}
+                  </div>
+                ))}
 
-              {isEditing && (
-                <Button
+                {/* Add Image Button */}
+                <button
                   type="button"
                   onClick={handleAddImage}
-                  disabled={isSaving || isUploading || uploadMedia.isPending}
-                  className="w-full"
+                  className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {isUploading || uploadMedia.isPending ? 'Subiendo...' : 'Agregar Imagen'}
-                </Button>
-              )}
-              
+                  <Upload className="h-6 w-6" />
+                  <span className="text-sm">Agregar</span>
+                </button>
+              </div>
+
               {!isEditing && (
-                <div className="text-center text-muted-foreground py-8">
-                  Guarda el producto para agregar imágenes
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Primero guarda el producto para poder agregar imágenes.
+                </p>
               )}
             </TabsContent>
           </Tabs>
-          
-          <div className="flex justify-end space-x-2 pt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSaving}
-            >
+
+          {/* Form Actions */}
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving && 'Guardando...'}
-              {!isSaving && (isEditing ? 'Actualizar' : 'Crear')}
+              {isSaving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear producto'}
             </Button>
           </div>
         </form>

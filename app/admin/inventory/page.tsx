@@ -1,24 +1,28 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import useSWR from 'swr'
 import { Search, AlertTriangle } from 'lucide-react'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InventoryDataTable } from '@/components/admin/inventory/inventory-data-table'
-import { useProducts, useUpdateStock } from '@/lib/supabase-services'
+import { adminProductsApi } from '@/lib/api/adminProducts'
 import type { ProductWithImages } from '@/lib/types'
 
 export default function InventoryPage() {
   const [search, setSearch] = useState('')
 
   // Fetch products from API
-  const { data: products, isLoading, refetch } = useProducts()
+  const { data: products, isLoading, mutate } = useSWR<ProductWithImages[]>(
+    '/admin/products',
+    () => adminProductsApi.list()
+  )
 
   const handleProductUpdate = useCallback(() => {
-    refetch()
-  }, [refetch])
+    mutate()
+  }, [mutate])
 
   // Calculate stock stats
   const { lowStockProducts, outOfStockProducts, filteredProducts } = useMemo(() => {

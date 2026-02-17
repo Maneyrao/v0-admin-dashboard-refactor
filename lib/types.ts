@@ -15,13 +15,13 @@ export interface Customer {
 export interface Product {
   id: string
   name: string
-  description: string | null
+  description: string
   price: number
   stock: number
   is_published: boolean
   is_featured: boolean
   created_at: string
-  updated_at: string | null
+  updated_at: string
 }
 
 export interface ProductImage {
@@ -29,8 +29,6 @@ export interface ProductImage {
   product_id: string
   image_url: string
   is_primary: boolean
-  type?: string
-  order?: number
   created_at: string
 }
 
