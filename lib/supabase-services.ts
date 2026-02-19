@@ -27,6 +27,18 @@ type SupabaseProductMedia = {
   created_at: string
 }
 
+type SupabaseProductVariant = {
+  id: string
+  product_id: string
+  label: string
+  measure_value: string | null
+  price: number
+  stock: number
+  is_default: boolean
+  sort_order: number
+  created_at: string
+}
+
 type CreateProductData = {
   name: string
   description?: string
@@ -57,7 +69,11 @@ const getPublicImageUrl = (url: string): string => {
 }
 
 // Transform Supabase product to frontend product
-const transformProduct = (product: SupabaseProduct, media: SupabaseProductMedia[] = []): ProductWithImages => ({
+const transformProduct = (
+  product: SupabaseProduct,
+  media: SupabaseProductMedia[] = [],
+  variants: SupabaseProductVariant[] = []
+): ProductWithImages => ({
   id: product.id,
   name: product.name,
   description: product.description,
@@ -75,6 +91,17 @@ const transformProduct = (product: SupabaseProduct, media: SupabaseProductMedia[
     type: m.type,
     order: m.order,
     created_at: m.created_at
+  })),
+  variants: variants.map(v => ({
+    id: v.id,
+    product_id: v.product_id,
+    label: v.label,
+    measure_value: v.measure_value,
+    price: v.price,
+    stock: v.stock,
+    is_default: v.is_default,
+    sort_order: v.sort_order,
+    created_at: v.created_at
   }))
 })
 
@@ -88,7 +115,8 @@ export const useProducts = () => {
         .from('products')
         .select(`
           *,
-          product_media(id, url, is_primary, type, order)
+          product_media(id, url, is_primary, type, order),
+          product_variants(id, label, measure_value, price, stock, is_default, sort_order, created_at)
         `)
         .order('created_at', { ascending: false })
       
@@ -98,7 +126,7 @@ export const useProducts = () => {
       }
       
       return products?.map(product => 
-        transformProduct(product, product.product_media)
+        transformProduct(product, product.product_media, product.product_variants)
       ) || []
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -116,7 +144,8 @@ export const useProduct = (id: string) => {
         .from('products')
         .select(`
           *,
-          product_media(id, url, is_primary, type, order, created_at)
+          product_media(id, url, is_primary, type, order, created_at),
+          product_variants(id, label, measure_value, price, stock, is_default, sort_order, created_at)
         `)
         .eq('id', id)
         .single()
@@ -128,7 +157,7 @@ export const useProduct = (id: string) => {
       
       if (!product) return null
       
-      return transformProduct(product, product.product_media)
+      return transformProduct(product, product.product_media, product.product_variants)
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
@@ -153,7 +182,7 @@ export const useCreateProduct = () => {
         throw new Error('Error al crear producto')
       }
       
-      return transformProduct(product, [])
+      return transformProduct(product, [], [])
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -192,8 +221,14 @@ export const useUpdateProduct = () => {
         .select('*')
         .eq('product_id', id)
         .order('order', { ascending: true })
+        
+      const { data: variants } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', id)
+        .order('sort_order', { ascending: true })
       
-      return transformProduct(product, media || [])
+      return transformProduct(product, media || [], variants || [])
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
