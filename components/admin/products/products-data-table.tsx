@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Pencil, Trash2, Eye, EyeOff, Star } from 'lucide-react'
+import { Pencil, Trash2, Eye, EyeOff, Star, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -229,6 +229,12 @@ export function ProductsDataTable({
                                 Destacado
                               </Badge>
                             )}
+                            {product.variants && product.variants.length > 0 && (
+                              <Badge variant="outline" className="gap-1 text-xs shrink-0">
+                                <Layers className="h-3 w-3" />
+                                {product.variants.length} variantes
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground line-clamp-1">
                             {product.description || ''}
@@ -237,9 +243,22 @@ export function ProductsDataTable({
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(product.price)}
+                      {product.variants && product.variants.length > 0 ? (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Desde </span>
+                          {formatCurrency(Math.min(...product.variants.map(v => v.price)))}
+                        </div>
+                      ) : (
+                        formatCurrency(product.price)
+                      )}
                     </TableCell>
-                    <TableCell>{getStockBadge(product.stock)}</TableCell>
+                    <TableCell>
+                      {product.variants && product.variants.length > 0 ? (
+                        getStockBadge(product.variants.reduce((sum, v) => sum + v.stock, 0))
+                      ) : (
+                        getStockBadge(product.stock)
+                      )}
+                    </TableCell>
                     <TableCell>
                       {product.is_published ? (
                         <Badge variant="secondary" className="gap-1">
