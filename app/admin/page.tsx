@@ -1,41 +1,22 @@
 'use client'
 
 import { useMemo } from 'react'
-import useSWR from 'swr'
+import { useRouter } from 'next/navigation'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { KPICards } from '@/components/admin/dashboard/kpi-cards'
 import { RecentOrdersTable } from '@/components/admin/dashboard/recent-orders-table'
-import { adminOrdersApi } from '@/lib/api/adminOrders'
+import { useOrders } from '@/lib/supabase-services'
+import { useAuth } from '@/components/auth/auth-provider'
 import type { OrderWithCustomer } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 
 export default function AdminDashboardPage() {
+  const router = useRouter()
+  const { user, loading, isAuthenticated, logout } = useAuth()
+  
   // Fetch orders from API
-  const { data: orders, isLoading, error } = useSWR<OrderWithCustomer[]>(
-    '/admin/orders',
-    () => adminOrdersApi.list(),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      onError: (err) => {
-        console.error('Failed to fetch dashboard data:', err)
-      }
-    }
-  )
-
-  if (error) {
-    return (
-      <>
-        <AdminTopbar title="Dashboard" />
-        <main className="p-4 lg:p-6">
-          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center">
-            <h3 className="text-lg font-semibold text-destructive mb-2">Error al cargar dashboard</h3>
-            <p className="text-muted-foreground">No se pudieron cargar los datos. Intenta recargar la página.</p>
-          </div>
-        </main>
-      </>
-    )
-  }
+  const { data: orders, isLoading, error } = useOrders()
 
   // Calculate stats from orders
   const stats = useMemo(() => {
@@ -51,6 +32,25 @@ export default function AdminDashboardPage() {
       ).length,
     }
   }, [orders])
+
+  // Redirect if not authenticated
+  if (!loading && !isAuthenticated) {
+    router.replace('/admin/login')
+    return null
+  }
+
+  if (loading) {
+    return (
+      <>
+        <AdminTopbar title="Dashboard" />
+        <main className="p-4 lg:p-6 space-y-6">
+          <div className="flex items-center justify-center h-64">
+            <Skeleton className="h-8 w-32" />
+          </div>
+        </main>
+      </>
+    )
+  }
 
   if (isLoading) {
     return (

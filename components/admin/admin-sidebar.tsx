@@ -2,22 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, ShoppingCart, Package, Boxes, Menu, X, LogOut } from 'lucide-react'
+import { Package, Boxes, Menu, X, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
-import { logout } from '@/lib/auth'
+import { adminLogout } from '@/lib/supabase-auth'
 import { 
   ROUTE_ADMIN_DASHBOARD, 
-  ROUTE_ADMIN_ORDERS, 
   ROUTE_ADMIN_PRODUCTS, 
   ROUTE_ADMIN_INVENTORY,
   ROUTE_ADMIN_LOGIN 
 } from '@/lib/routes'
 
 const navigation = [
-  { name: 'Dashboard', href: ROUTE_ADMIN_DASHBOARD, icon: LayoutDashboard },
-  { name: 'Pedidos', href: ROUTE_ADMIN_ORDERS, icon: ShoppingCart },
   { name: 'Productos', href: ROUTE_ADMIN_PRODUCTS, icon: Package },
   { name: 'Inventario', href: ROUTE_ADMIN_INVENTORY, icon: Boxes },
 ]
@@ -34,9 +31,13 @@ export function AdminSidebar() {
     return pathname.startsWith(href)
   }
 
-  const handleLogout = () => {
-    logout()
-    router.replace(ROUTE_ADMIN_LOGIN)
+  const handleLogout = async () => {
+    try {
+      await adminLogout()
+      router.replace(ROUTE_ADMIN_LOGIN)
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   return (
@@ -78,24 +79,24 @@ export function AdminSidebar() {
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-3 py-4">
             {navigation.map((item) => {
-              const active = isActive(item.href)
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                    active
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              )
-            })}
+                const active = isActive(item.href)
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                      active
+                        ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                )
+              })}
           </nav>
 
           {/* Footer with logout */}

@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { login } from '@/lib/auth'
-import { getToken } from '@/lib/storage'
-import { ROUTE_ADMIN_DASHBOARD } from '@/lib/routes'
+import { adminLogin, getAdminSession } from '@/lib/supabase-auth'
+import { supabase } from '@/lib/supabase'
+import { ROUTE_ADMIN_PRODUCTS } from '@/lib/routes'
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
@@ -20,14 +20,25 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
   const searchParams = useSearchParams()
-  const nextUrl = searchParams.get('next') || ROUTE_ADMIN_DASHBOARD
+  const nextUrl = searchParams.get('next') || ROUTE_ADMIN_PRODUCTS
+
+  // Pre-fill email with admin email from environment
+  useEffect(() => {
+    if (!email) {
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'roma_descartables@hotmail.com'
+      setEmail(adminEmail)
+    }
+  }, [email])
 
   // Redirect if already logged in
   useEffect(() => {
-    const token = getToken()
-    if (token) {
-      router.replace(nextUrl)
+    const checkSession = async () => {
+      const session = await getAdminSession()
+      if (session) {
+        router.replace(nextUrl)
+      }
     }
+    checkSession()
   }, [router, nextUrl])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,19 +56,22 @@ export default function AdminLoginPage() {
 
     try {
       console.log('⏳ Llamando a función login...')
-      await login(email, password)
+      const result = await adminLogin(email, password)
       
-      console.log('✅ Login exitoso, verificando token...')
+      console.log('✅ Login exitoso, verificando sesión...')
       
-      // Verificación inmediata del token
-      const token = localStorage.getItem('access_token')
-      console.log('🔍 Token después de login:', token ? 'EXISTS' : 'MISSING')
+      // Pequeño delay para asegurar sesión sincronización
+      await new Promise(resolve => setTimeout(resolve, 100))
       
-      if (token) {
+      // Verificación robusta de la sesión
+      const session = await getAdminSession()
+      console.log('🔍 Sesión después de login:', session ? 'EXISTS' : 'MISSING')
+      
+      if (session) {
         console.log('🔄 Redirigiendo a:', nextUrl)
         router.replace(nextUrl)
       } else {
-        throw new Error('Token no guardado correctamente')
+        throw new Error('Sesión no guardada correctamente')
       }
       
     } catch (err) {
@@ -137,16 +151,7 @@ export default function AdminLoginPage() {
                   <span>⚠️</span>
                   <div>
                     <div className="font-medium">{error}</div>
-                    {error.includes('NEXT_PUBLIC_API_BASE_URL') && (
-                      <div className="text-xs mt-1 opacity-75">
-                        Verifica las variables de entorno en Vercel Settings → Environment Variables
-                      </div>
-                    )}
-                    {error.includes('CORS') && (
-                      <div className="text-xs mt-1 opacity-75">
-                        Verifica CORS_ORIGINS en Railway
-                      </div>
-                    )}
+
                   </div>
                 </div>
               </div>

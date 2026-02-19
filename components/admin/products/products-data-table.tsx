@@ -24,8 +24,11 @@ import { formatCurrency } from '@/lib/format'
 import { ProductDialog } from './product-dialog'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { toast } from 'sonner'
-import { adminProductsApi } from '@/lib/api/adminProducts'
-import { ApiError } from '@/lib/apiClient'
+import { 
+  useUpdateProduct, 
+  useDeleteProduct, 
+  useSetFeaturedProduct 
+} from '@/lib/supabase-services'
 
 const MAX_FEATURED_PRODUCTS = 10
 
@@ -69,24 +72,22 @@ export function ProductsDataTable({
     return loadingActions.has(`${productId}-${action}`)
   }
 
-  const handleDelete = async () => {
+  const deleteProduct = useDeleteProduct()
+  const setFeaturedProduct = useSetFeaturedProduct()
+  const updateProduct = useUpdateProduct()
+  
+  const handleDelete = () => {
     if (!deletingProduct) return
-
-    setLoading(deletingProduct.id, 'delete', true)
-    try {
-      await adminProductsApi.remove(deletingProduct.id)
-      toast.success(`Producto "${deletingProduct.name}" eliminado`)
-      onProductUpdate()
-    } catch (error) {
-      if (error instanceof ApiError) {
-        toast.error('Error al eliminar el producto')
-      } else {
-        toast.error('Error de conexión')
+    setDeletingProduct(deletingProduct)
+    deleteProduct.mutate(deletingProduct.id, {
+      onSuccess: () => {
+        onProductUpdate()
+        setDeletingProduct(null)
+      },
+      onError: () => {
+        setDeletingProduct(null)
       }
-    } finally {
-      setLoading(deletingProduct.id, 'delete', false)
-      setDeletingProduct(null)
-    }
+    })
   }
 
   const handleTogglePublished = async (product: ProductWithImages) => {
@@ -98,7 +99,14 @@ export function ProductsDataTable({
     setLoading(productId, 'publish', true)
 
     try {
-      await adminProductsApi.update(productId, { is_published: newStatus })
+      // ← AGREGAR LLAMADA REAL A LA BASE DE DATOS
+      await updateProduct.mutateAsync({
+        id: productId,
+        data: {
+          status: newStatus ? 'active' : 'paused'
+        }
+      })
+      
       toast.success(newStatus ? 'Producto publicado' : 'Producto oculto')
       onProductUpdate()
     } catch (error) {
@@ -109,11 +117,8 @@ export function ProductsDataTable({
         return next
       })
       
-      if (error instanceof ApiError) {
-        toast.error('Error al actualizar el producto')
-      } else {
-        toast.error('Error de conexión')
-      }
+      toast.error('Error al cambiar estado del producto')
+      console.error('Toggle published error:', error)
     } finally {
       setLoading(productId, 'publish', false)
     }
@@ -122,41 +127,21 @@ export function ProductsDataTable({
   const handleToggleFeatured = async (product: ProductWithImages) => {
     const newStatus = !product.is_featured
     const productId = product.id
-
+    
     // Check limit before making optimistic update
     if (newStatus && featuredCount >= MAX_FEATURED_PRODUCTS) {
       toast.error(`Límite alcanzado: máximo ${MAX_FEATURED_PRODUCTS} productos destacados`)
       return
     }
     
-    // Optimistic update
-    setOptimisticProducts(prev => new Map(prev).set(productId, { is_featured: newStatus }))
-    setLoading(productId, 'featured', true)
-
-    try {
-      await adminProductsApi.setFeatured(productId, newStatus)
-      toast.success(newStatus ? 'Producto destacado' : 'Producto ya no está destacado')
-      onProductUpdate()
-    } catch (error) {
-      // Revert optimistic update
-      setOptimisticProducts(prev => {
-        const next = new Map(prev)
-        next.delete(productId)
-        return next
-      })
-      
-      if (error instanceof ApiError) {
-        if (error.status === 409) {
-          toast.error(`Límite alcanzado: máximo ${MAX_FEATURED_PRODUCTS} productos destacados`)
-        } else {
-          toast.error('Error al actualizar el producto')
+    setFeaturedProduct.mutate(
+      { id: productId, featured: newStatus },
+      {
+        onSuccess: () => {
+          onProductUpdate()
         }
-      } else {
-        toast.error('Error de conexión')
       }
-    } finally {
-      setLoading(productId, 'featured', false)
-    }
+    )
   }
 
   const getStockBadge = (stock: number) => {
@@ -246,7 +231,7 @@ export function ProductsDataTable({
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground line-clamp-1">
-                            {product.description}
+                            {product.description || ''}
                           </p>
                         </div>
                       </div>
